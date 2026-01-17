@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CustomerStatus {
+  ON_BAKIM
+  ISLEMDE
+  TAMAMLANDI
+  BEKLEMEDE
+  IPTAL
+}
+
+enum ProcessStatus {
+  PLANLANDI
+  DEVAM
+  TAMAMLANDI
+  BEKLEMEDE
+  IPTAL
+}
+
+enum PaymentMethod {
+  NAKIT
+  HAVALE
+  EFT
+  KRIPTO
+}
+
+enum ExpenseCategory {
+  MALZEME
+  REKLAM
+  YAZILIM
+  GENEL_GIDER
+}
+
+enum ReminderType {
+  ISLEM
+  ODEME
+  KONTROL
+  BEKLEME
+}
+
+enum ReminderStatus {
+  BEKLEMEDE
+  GONDERILDI
+  IPTAL
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  notifications Notification[]
+}
+
+model Customer {
+  id               String          @id @default(uuid())
+  firstName        String
+  lastName         String
+  phone            String          @unique
+  motherName       String
+  counterpartyName String?
+  requestType      String
+  firstContactDate DateTime
+  status           CustomerStatus
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  processes        Process[]
+  payments         Payment[]
+  reminders        Reminder[]
+}
+
+model Process {
+  id              String        @id @default(uuid())
+  customerId      String
+  processType     String
+  startDate       DateTime
+  durationDays    Int
+  status          ProcessStatus
+  videoSent       Boolean       @default(false)
+  readingTracking String?
+  resultNote      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  payments        Payment[]
+  reminders       Reminder[]
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  customerId         String
+  processId          String?
+  amount             Decimal       @db.Decimal(12, 2)
+  paymentDate        DateTime
+  method             PaymentMethod
+  installmentGroupId String?
+  note               String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  process            Process?      @relation(fields: [processId], references: [id])
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  category    ExpenseCategory
+  amount      Decimal         @db.Decimal(12, 2)
+  expenseDate DateTime
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model Reminder {
+  id                 String         @id @default(uuid())
+  customerId         String
+  processId          String
+  reminderType       ReminderType
+  triggerDatetime    DateTime
+  status             ReminderStatus
+  manualSnoozeUntil  DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  customer           Customer       @relation(fields: [customerId], references: [id])
+  process            Process        @relation(fields: [processId], references: [id])
+  notifications      Notification[]
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  reminderId  String
+  userId      String?
+  title       String
+  body        String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  reminder    Reminder @relation(fields: [reminderId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+}
