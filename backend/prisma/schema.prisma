@@ -50,18 +50,6 @@ enum ReminderStatus {
   IPTAL
 }
 
-model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  notifications Notification[]
-}
-
 model Customer {
   id               String          @id @default(uuid())
   firstName        String
@@ -140,11 +128,9 @@ model Reminder {
 model Notification {
   id          String   @id @default(uuid())
   reminderId  String
-  userId      String?
   title       String
   body        String
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
   reminder    Reminder @relation(fields: [reminderId], references: [id])
-  user        User?    @relation(fields: [userId], references: [id])
 }

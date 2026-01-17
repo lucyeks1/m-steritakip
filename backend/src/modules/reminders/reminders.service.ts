@@ -87,7 +87,6 @@ export class RemindersService {
       await this.prisma.notification.create({
         data: {
           reminderId: reminder.id,
-          userId: await this.getDefaultUserId(),
           title: 'Yaklaşan İşlem',
           body: `${reminder.customer.firstName} ${reminder.customer.lastName} için ${reminder.process.processType} işlemi yaklaşmaktadır.`,
         },
@@ -100,10 +99,5 @@ export class RemindersService {
     }
 
     this.logger.log(`Gönderilen hatırlatma sayısı: ${pending.length}`);
-  }
-
-  private async getDefaultUserId() {
-    const user = await this.prisma.user.findFirst({ where: { isActive: true } });
-    return user?.id ?? null;
   }
 }
