@@ -1,12 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { ReminderStatus } from '@prisma/client';
+import { ReminderStatus, ReminderType } from '@prisma/client';
+import { addDays, subDays } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { PrismaService } from '../../config/prisma.service';
 
 @Injectable()
 export class RemindersService {
   private readonly logger = new Logger(RemindersService.name);
+  private readonly timeZone = 'Europe/Istanbul';
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -23,8 +25,50 @@ export class RemindersService {
   }
 
   @Cron('* * * * *', { timeZone: 'Europe/Istanbul' })
+  async scheduleProcessReminders() {
+    const now = toZonedTime(new Date(), this.timeZone);
+    const startWindow = addDays(now, 1);
+    const endWindow = addDays(now, 1);
+    endWindow.setMinutes(endWindow.getMinutes() + 1);
+
+    const upcomingProcesses = await this.prisma.process.findMany({
+      where: {
+        startDate: {
+          gte: startWindow,
+          lt: endWindow,
+        },
+      },
+    });
+
+    for (const process of upcomingProcesses) {
+      const triggerDatetime = subDays(process.startDate, 1);
+      const existing = await this.prisma.reminder.findFirst({
+        where: {
+          processId: process.id,
+          reminderType: ReminderType.ISLEM,
+          triggerDatetime,
+        },
+      });
+
+      if (existing) {
+        continue;
+      }
+
+      await this.prisma.reminder.create({
+        data: {
+          customerId: process.customerId,
+          processId: process.id,
+          reminderType: ReminderType.ISLEM,
+          triggerDatetime,
+          status: ReminderStatus.BEKLEMEDE,
+        },
+      });
+    }
+  }
+
+  @Cron('* * * * *', { timeZone: 'Europe/Istanbul' })
   async dispatchPendingReminders() {
-    const now = toZonedTime(new Date(), 'Europe/Istanbul');
+    const now = toZonedTime(new Date(), this.timeZone);
 
     const pending = await this.prisma.reminder.findMany({
       where: {
